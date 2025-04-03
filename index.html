@@ -2,576 +2,954 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Chatbot Widget with Persistent History & Reset</title>
+  <title>Enhanced Chatbot Widget</title>
+  <!-- Import a modern font from Google Fonts -->
+  <link href="https://fonts.googleapis.com/css?family=Roboto:400,500&display=swap" rel="stylesheet">
   <style>
-    /* Main container fixed in the bottom-right corner */
-    #chatbot-widget {
+    body {
+      font-family: 'Roboto', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f9f9f9;
+    }
+    /* Floating chat icon */
+    .chatbot-icon {
       position: fixed;
       bottom: 20px;
       right: 20px;
-      font-family: 'Helvetica Neue', Arial, sans-serif;
-      z-index: 1000;
-      width: 420px;
-      pointer-events: none; /* disable pointer events on container; enabled on children */
-    }
-    /* Initial popup message positioned to the left of the chat icon */
-    #initial-popup {
-      position: absolute;
-      bottom: 10px;
-      right: 70px; /* to the left of the chat icon */
-      background: #4a90e2;
-      color: #fff;
-      padding: 10px 15px;
-      border-radius: 8px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-      pointer-events: auto;
-      animation: fadeIn 0.5s ease;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    /* Always-visible chat icon styling */
-    .chatbot-icon {
       width: 60px;
       height: 60px;
-      background: linear-gradient(145deg, #4a90e2, #357ab7);
+      background-color: #ee5566;
       border-radius: 50%;
+      cursor: pointer;
+      z-index: 1000;
       display: flex;
       align-items: center;
       justify-content: center;
-      cursor: pointer;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-      pointer-events: auto;
-      position: absolute;
-      bottom: 0;
-      right: 0;
-    }
-    /* Notification badge styling */
-    #chat-badge {
-      position: absolute;
-      top: -5px;
-      right: -5px;
-      background: #ff5c5c;
       color: #fff;
-      font-size: 10px;
-      padding: 2px 6px;
-      border-radius: 12px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+      font-size: 30px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
-    /* Chat window styling */
+    .chatbot-icon:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+    }
+    /* Notification bubble */
+    .chatbot-notification {
+      position: fixed;
+      bottom: 30px;
+      right: 90px;
+      background-color: #ee5566;
+      color: #fff;
+      padding: 10px 15px;
+      border-radius: 20px;
+      font-size: 14px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      animation: fadeIn 0.5s ease;
+      z-index: 999;
+    }
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateX(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    /* Chat window container */
     .chatbot-window {
-      position: absolute;
+      position: fixed;
       bottom: 90px;
-      right: 0;
-      width: 400px;
-      height: 600px;
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 8px;
-      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-      display: flex;
-      flex-direction: column;
+      right: 20px;
+      width: 450px;
+      height: 700px;
+      background-color: #fff;
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
       overflow: hidden;
-      pointer-events: auto;
       opacity: 0;
       transform: translateY(20px);
-      transition: opacity 0.3s ease, transform 0.3s ease;
+      pointer-events: none;
+      transition: opacity 0.4s ease, transform 0.4s ease, width 0.4s ease,
+                  height 0.4s ease, bottom 0.4s ease, right 0.4s ease;
     }
     .chatbot-window.open {
       opacity: 1;
       transform: translateY(0);
+      pointer-events: auto;
     }
+    .chatbot-window.maximized {
+      width: 40%;
+      height: 90%;
+      bottom: 5%;
+      right: 5%;
+    }
+    /* Chat window header */
     .chatbot-header {
-      background: linear-gradient(145deg, #4a90e2, #357ab7);
+      background-color: #ee5566;
       color: #fff;
-      padding: 12px;
-      text-align: center;
-      font-size: 1.2em;
+      padding: 15px 10px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .bot-header-content {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .avatar {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+    }
+    .bot-text {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.2;
+    }
+    .bot-name {
+      font-size: 18px;
+      font-weight: 500;
+    }
+    .bot-tagline {
+      font-size: 12px;
+      color: #f5f5f5;
+    }
+    .maximize-button {
+      background: transparent;
+      border: none;
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+      transition: color 0.3s ease;
+    }
+    .maximize-button:hover {
+      color: #f5f5f5;
+    }
+    /* Chat window body */
+    .chatbot-body {
+      padding: 15px;
+      height: calc(100% - 60px);
+      overflow-y: auto;
+      font-size: 16px;
+      line-height: 1.5;
+      color: #333;
       position: relative;
     }
-    .close-btn {
+    .chatbot-body::-webkit-scrollbar {
+      width: 8px;
+    }
+    .chatbot-body::-webkit-scrollbar-thumb {
+      background-color: rgba(0,0,0,0.2);
+      border-radius: 4px;
+    }
+    /* Global Search bar (main view) */
+    .search-container {
+      padding: 15px 15px 20px 0;
+    }
+    .search-input-wrapper {
+      position: relative;
+    }
+    .search-input-wrapper input {
+      width: 90%;
+      padding: 10px 10px 10px 40px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .search-icon {
       position: absolute;
-      right: 12px;
-      top: 12px;
-      font-size: 1.2em;
-      cursor: pointer;
-      color: #fff;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 18px;
+      color: #888;
     }
-    /* Scrollable area for messages */
-    .chatbot-messages {
-      flex: 1;
-      padding: 10px;
-      overflow-y: auto;
-      background: #f9f9f9;
-    }
-    /* Inline options container */
+    /* Options accordion styling */
     .chatbot-options {
-      margin-top: 5px;
-      text-align: center;
-    }
-    .chatbot-options button {
-      background: linear-gradient(145deg, #4a90e2, #357ab7);
-      border: none;
-      color: #fff;
-      padding: 8px 12px;
-      margin: 5px 3px;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background 0.3s ease;
-    }
-    .chatbot-options button:hover {
-      background: #357ab7;
-    }
-    .chatbot-feedback {
-      padding: 10px;
-      background: #f1f1f1;
-      border-top: 1px solid #ddd;
-      text-align: center;
-    }
-    .feedback-btn {
-      background: #7ed321;
-      border: none;
-      color: #fff;
-      padding: 8px 12px;
-      margin: 5px;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background 0.3s ease;
-    }
-    .feedback-btn:hover {
-      background: #6bb41a;
-    }
-    /* Message bubble styles */
-    .message {
       display: flex;
-      margin-bottom: 10px;
-      align-items: flex-end;
+      flex-direction: column;
+      gap: 12px;
+      transition: opacity 0.4s ease;
     }
-    .message.bot {
-      justify-content: flex-start;
+    .option-container {
+      border: 2px solid #f0f0f0;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+      transition: opacity 0.4s ease, transform 0.4s ease;
     }
-    .message.user {
-      justify-content: flex-end;
+    .hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(20px);
     }
-    .message .icon {
-      width: 32px;
-      height: 32px;
-      flex-shrink: 0;
+    .main-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 15px 20px;
+      font-size: 16px;
+      color: #333;
+      cursor: pointer;
+      background: #fff;
+      border: none;
+      width: 100%;
+      text-align: left;
+      transition: background-color 0.2s ease, transform 0.2s ease,
+                  box-shadow 0.2s ease;
     }
-    .message.bot .icon {
-      margin-right: 8px;
+    .main-option:hover {
+      background-color: #f6f6f6;
+      transform: translateY(-2px);
+      box-shadow: 0px 4px 8px rgba(0,0,0,0.1);
     }
-    .message.user .icon {
-      margin-left: 8px;
+    .option-icon {
+      margin-right: 10px;
+      font-size: 20px;
     }
-    .bubble {
-      max-width: 70%;
+    .arrow {
+      transition: transform 0.3s ease;
+    }
+    .arrow.rotated {
+      transform: rotate(90deg);
+    }
+    /* Sub-options accordion */
+    .sub-options {
+      max-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding: 0 20px;
+      background: #fafafa;
+      transition: max-height 0.4s ease, opacity 0.4s ease;
+      opacity: 0;
+    }
+    .sub-options.open {
+      max-height: 300px;
+      opacity: 1;
+      padding-bottom: 15px;
+    }
+    .sub-option {
+      padding: 10px 15px;
+      font-size: 14px;
+      color: #555;
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s ease, transform 0.2s ease;
+      text-align: left;
+    }
+    .sub-option:hover {
+      background-color: #f0f0f0;
+      transform: translateX(5px);
+    }
+    /* Back button inside options */
+    .back-button {
+      background: transparent;
+      border: none;
+      color: #ee5566;
+      font-size: 18px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      text-align: left;
+    }
+    .back-button:hover {
+      color: #cc4455;
+    }
+    /* Resource sections (for forms, templates, tools) */
+    .resource-section {
+      display: none;
+      background: #f0f4f8;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      margin: 15px 20px 20px;
+      transition: max-height 0.4s ease, opacity 0.4s ease;
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+    }
+    .resource-section.open {
+      display: block;
+      max-height: 400px;
+      opacity: 1;
+    }
+    .resource-section h4 {
+      margin: 0 0 15px;
+      font-size: 18px;
+      color: #333;
+      font-weight: 500;
+    }
+    .resource-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    .resource-item {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      padding: 15px;
+      flex: 1 1 calc(50% - 15px);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .resource-item:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    .resource-item a {
+      text-decoration: none;
+      color: #333;
+      font-size: 16px;
+      text-align: center;
+      width: 100%;
+    }
+    /* Video Container with close button */
+    .video-container {
+      display: none;
+      margin: 15px 20px;
+      position: relative;
+    }
+    .video-container.open {
+      display: block;
+    }
+    .video-container iframe {
+      width: 100%;
+      height: 250px;
+      border: none;
+      border-radius: 8px;
+    }
+    .close-video {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #ee5566;
+      color: #fff;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      z-index: 11;
+    }
+    .close-video:hover {
+      background: #cc4455;
+    }
+    /* Search Tab styling (second tab) */
+    .search-tab {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #fff;
+      padding: 20px;
+      overflow-y: auto;
+      z-index: 10;
+      opacity: 0;
+      transform: translateY(20px);
+      pointer-events: none;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      border-top: 2px solid #ee5566;
+    }
+    .search-tab.open {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+    .search-tab-title {
+      font-size: 20px;
+      margin-bottom: 15px;
+      color: #333;
+      text-align: center;
+    }
+    .search-tab-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    .search-tab-header input {
+      width: 100%;
       padding: 10px;
-      border-radius: 15px;
-      font-size: 0.95em;
-      line-height: 1.3;
-      word-wrap: break-word;
-      overflow-wrap: break-word;
-      white-space: pre-wrap;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin-bottom: 15px;
     }
-    .message.bot .bubble {
-      background: #e9efff;
-      border: 1px solid #c3d0ea;
+    .back-search {
+      background: transparent;
+      border: none;
+      color: #ee5566;
+      font-size: 16px;
+      margin-bottom: 15px;
+      cursor: pointer;
+    }
+    .search-results-section {
+      margin-bottom: 20px;
+    }
+    .search-results-section h4 {
+      margin-bottom: 10px;
+      font-size: 18px;
       color: #333;
     }
-    .message.user .bubble {
-      background: #ee5566;
-      border: 1px solid #cc4455;
-      color: #fff;
+    .search-item {
+      padding: 10px;
+      border-bottom: 1px solid #e0e0e0;
+      font-size: 16px;
+      color: #333;
     }
   </style>
 </head>
 <body>
-  <div id="chatbot-widget">
-    <!-- Initial popup (appears only once) -->
-    <div id="initial-popup">
-      Hi! I’ll assist you with your issues.
-    </div>
-    <!-- Always-visible chat icon with badge -->
-    <div class="chatbot-icon" id="chatbot-icon">
-      <svg width="32" height="32" viewBox="0 0 24 24" fill="#fff" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 2a2 2 0 00-2 2v1H6a2 2 0 00-2 2v3h16V7a2 2 0 00-2-2h-4V4a2 2 0 00-2-2zm-6 9v6a2 2 0 002 2h12a2 2 0 002-2v-6H6zm5 3a1 1 0 112 0 1 1 0 11-2 0zm6 0a1 1 0 112 0 1 1 0 11-2 0z"/>
-      </svg>
-      <span id="chat-badge">1 new</span>
-    </div>
-    <!-- Chat window (initially hidden) -->
-    <div class="chatbot-window" id="chatbot-window">
-      <div class="chatbot-header">
-        ChatBot
-        <span class="close-btn" id="chatbot-close">&times;</span>
+
+  <!-- Notification bubble -->
+  <div class="chatbot-notification" id="chatbotNotification">
+    Hey, how can I help you today?
+  </div>
+
+  <!-- Floating chat icon -->
+  <div class="chatbot-icon" onclick="toggleChatbot()">💬</div>
+
+  <!-- Chat window -->
+  <div class="chatbot-window" id="chatbotWindow">
+    <div class="chatbot-header">
+      <div class="bot-header-content">
+        <img class="avatar" src="https://img.freepik.com/free-vector/graident-ai-robot-vectorart_78370-4114.jpg" alt="Avatar">
+        <div class="bot-text">
+          <div class="bot-name">Zen Bot</div>
+          <div class="bot-tagline">Your Virtual Assistance</div>
+        </div>
       </div>
-      <!-- Scrollable messages area -->
-      <div id="messages" class="chatbot-messages"></div>
-      <div id="chatbot-feedback" class="chatbot-feedback" style="display: none;">
-        <p>Was this helpful?</p>
-        <button id="feedback-yes" class="feedback-btn">Yes</button>
-        <button id="feedback-no" class="feedback-btn">No</button>
+      <button class="maximize-button" onclick="toggleMaximize(event)">⛶</button>
+    </div>
+    <div class="chatbot-body">
+      <!-- Global Search bar in main view -->
+      <div class="search-container" id="globalSearchContainer">
+        <div class="search-input-wrapper">
+          <input type="text" id="searchBar" placeholder="Search..." />
+          <span class="search-icon">&#128269;</span>
+        </div>
+      </div>
+      <!-- Chatbot Options -->
+      <div class="chatbot-options" id="chatbotOptions">
+        <!-- Option 1: ZenTrades -->
+        <div class="option-container" data-placeholder="Search ZenTrades">
+          <button class="main-option">
+            <span class="option-icon">🚀</span>
+            <span class="option-text">Get started with ZenTrades (all verticals)</span>
+            <span class="arrow">></span>
+          </button>
+          <div class="sub-options">
+            <button class="back-button">&#8592;</button>
+            <button class="sub-option">Watch supademo</button>
+            <button class="sub-option">Submit demo request</button>
+            <button class="sub-option">Talk to customer support</button>
+          </div>
+        </div>
+        <!-- Option 2: Forms -->
+        <div class="option-container" data-placeholder="Search for forms">
+          <button class="main-option">
+            <span class="option-icon">📝</span>
+            <span class="option-text">How to use our form builder</span>
+            <span class="arrow">></span>
+          </button>
+          <div class="sub-options">
+            <button class="back-button">&#8592;</button>
+            <button class="sub-option">Watch Video</button>
+            <button class="sub-option">Chat with support</button>
+            <button class="sub-option">Look for forms</button>
+          </div>
+          <div class="resource-section forms-section">
+            <h4>Popular Forms</h4>
+            <div class="resource-list forms-list"></div>
+          </div>
+        </div>
+        <!-- Option 3: Invoices -->
+        <div class="option-container" data-placeholder="Search for invoices">
+          <button class="main-option">
+            <span class="option-icon">📄</span>
+            <span class="option-text">How to use our invoice builder</span>
+            <span class="arrow">></span>
+          </button>
+          <div class="sub-options">
+            <button class="back-button">&#8592;</button>
+            <button class="sub-option">Watch Video</button>
+            <button class="sub-option">Chat with support</button>
+            <button class="sub-option">Create invoices now</button>
+          </div>
+        </div>
+        <!-- Option 4: Checklists -->
+        <div class="option-container" data-placeholder="Search for checklists">
+          <button class="main-option">
+            <span class="option-icon">☑️</span>
+            <span class="option-text">How to use our checklists</span>
+            <span class="arrow">></span>
+          </button>
+          <div class="sub-options">
+            <button class="back-button">&#8592;</button>
+            <button class="sub-option">Watch Video - how to download</button>
+            <button class="sub-option">Chat with support</button>
+            <button class="sub-option">Look for checklists</button>
+          </div>
+        </div>
+        <!-- Option 5: Templates -->
+        <div class="option-container" data-placeholder="Search for templates">
+          <button class="main-option">
+            <span class="option-icon">📑</span>
+            <span class="option-text">How to use our templates</span>
+            <span class="arrow">></span>
+          </button>
+          <div class="sub-options">
+            <button class="back-button">&#8592;</button>
+            <button class="sub-option">Watch Video</button>
+            <button class="sub-option">Chat with support</button>
+            <button class="sub-option">Look for templates</button>
+          </div>
+          <div class="resource-section templates-section">
+            <h4>Popular Templates</h4>
+            <div class="resource-list templates-list"></div>
+          </div>
+        </div>
+        <!-- Option 6: Tools -->
+        <div class="option-container" data-placeholder="Search for tools">
+          <button class="main-option">
+            <span class="option-icon">🛠️</span>
+            <span class="option-text">How to use our tools</span>
+            <span class="arrow">></span>
+          </button>
+          <div class="sub-options">
+            <button class="back-button">&#8592;</button>
+            <button class="sub-option">Watch Video</button>
+            <button class="sub-option">Chat with support</button>
+            <button class="sub-option">Look for more Tools</button>
+          </div>
+          <div class="video-container">
+            <button class="close-video" onclick="closeVideo(event)">Close Video</button>
+            <iframe src="https://www.youtube.com/embed/o99EznX3ABw?si=rNQ3IfO8C6t3lwOS" title="YouTube video player" frameborder="0" allowfullscreen></iframe>
+          </div>
+          <div class="resource-section tools-section">
+            <h4>Popular Tools</h4>
+            <div class="resource-list tools-list"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Search Tab (second tab) -->
+      <div class="search-tab" id="searchTab">
+        <button class="back-search" onclick="closeSearchTab()">← Back</button>
+        <h2 class="search-tab-title">Search Resources</h2>
+        <div class="search-tab-header">
+          <input type="text" id="searchTabInput" placeholder="Search..." />
+        </div>
+        <div id="searchResults"></div>
       </div>
     </div>
   </div>
 
   <script>
-    // Global array to hold conversation history.
-    let chatHistory = [];
-
-    // Load chat history from localStorage.
-    function loadChatHistory() {
-      const stored = localStorage.getItem('chatHistory');
-      if (stored) {
-        chatHistory = JSON.parse(stored);
-        chatHistory.forEach(message => {
-          addMessageToDOM(message.side, message.text);
-        });
-      }
-    }
-
-    // Save chat history to localStorage.
-    function saveChatHistory() {
-      localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
-    }
-
-    // Append a message (updates DOM and history).
-    function addMessage(side, text, updateStorage = true) {
-      addMessageToDOM(side, text);
-      if (updateStorage) {
-        chatHistory.push({ side, text });
-        saveChatHistory();
-      }
-    }
-
-    // Create and append the DOM element for a chat message.
-    function addMessageToDOM(side, text) {
-      const messagesContainer = document.getElementById("messages");
-      const messageDiv = document.createElement("div");
-      messageDiv.classList.add("message", side);
-      
-      const iconDiv = document.createElement("div");
-      iconDiv.classList.add("icon");
-      if (side === "bot") {
-        iconDiv.innerHTML = `
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="#4a90e2" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 2a2 2 0 00-2 2v1H6a2 2 0 00-2 2v3h16V7a2 2 0 00-2-2h-4V4a2 2 0 00-2-2zm-6 9v6a2 2 0 002 2h12a2 2 0 002-2v-6H6zm5 3a1 1 0 112 0 1 1 0 11-2 0zm6 0a1 1 0 112 0 1 1 0 11-2 0z"/>
-          </svg>`;
+    // Global variable to track selected category ('forms', 'templates', 'tools') or null (aggregated)
+    let activeCategory = null;
+    
+    // Resource arrays
+    const forms = [
+      { name: "5 Year Internal Obstruction Form", link: "https://zentrades.pro/zenfire/forms/5-year-internal-obstruction-form" },
+      { name: "5 Year Obstruction Sprinkler Inspection Form", link: "https://zentrades.pro/zenfire/forms/5-year-obstruction-sprinkler-inspection-form" },
+      { name: "AES7", link: "https://zentrades.pro/zenfire/forms/aes-7-water-spray-fixed-system-inspection-report" },
+      { name: "Anchor Inn Inspection Checklist Form", link: "https://zentrades.pro/zenfire/forms/free-anchor-inn-inspection-checklist-form-fill-download" },
+      { name: "ANSI Eye Wash Equipment Annual Checklist", link: "https://zentrades.pro/zenfire/forms/ansi-eye-wash-equipment-annual-checklist-form" },
+      { name: "Aviator Arrival Inspection Checklist 6.1.3 Form", link: "https://zentrades.pro/zenfire/forms/aviator-arrival-inspection-checklist-6-1-3-form" },
+      { name: "Boat Inspection Report Form", link: "https://zentrades.pro/zenfire/forms/boat-inspection-report-form" },
+      { name: "Branch Manager Inspection Checklist Form", link: "https://zentrades.pro/zenfire/forms/free-branch-manager-inspection-checklist-form-fill-download" },
+      { name: "Building Condition Assessment Checklist Form", link: "https://zentrades.pro/zenfire/forms/building-condition-assessment-checklist-form" },
+      { name: "Building Site Inspection Checklist Form", link: "https://zentrades.pro/zenfire/forms/building-site-inspection-checklist-form" },
+      { name: "CBRE Monthly Site Inspection Checklist Form", link: "https://zentrades.pro/zenfire/forms/cbre-monthly-site-inspection-checklist-form" },
+      { name: "CO2 Systems Inspection Form NFPA12", link: "https://zentrades.pro/zenfire/forms/co2-systems-inspection-form-nfpa12" },
+      { name: "Construction Hazard Identification and Risk Assessment Checklist", link: "https://zentrades.pro/zenfire/forms/construction-hazard-identification-and-risk-assessment-checklist" },
+      { name: "Construction Site Cleaning Checklist Form", link: "https://zentrades.pro/zenfire/forms/construction-site-cleaning-checklist-form" },
+      { name: "Contractors Material and Test Certificate for Above Ground Piping Form", link: "https://zentrades.pro/zenfire/forms/contractors-material-and-test-certificate-for-above-ground-piping-form" },
+      { name: "Countrywide Property Inspection Checklist Form", link: "https://zentrades.pro/zenfire/forms/countrywide-property-inspection-checklist-form" },
+      { name: "Daily Prestart Safety Inspection Checklist Form", link: "https://zentrades.pro/zenfire/forms/daily-prestart-safety-inspection-checklist-form" },
+      { name: "Daily Site Safety and Environmental Inspection Record Civil Checklist Form", link: "https://zentrades.pro/zenfire/forms/daily-site-safety-and-environmental-inspection-record-civil-checklist-form" },
+      { name: "Dry Valve Trip Test", link: "https://zentrades.pro/zenfire/forms/dry-valve-trip-test" },
+      { name: "Emergency Exit Light Inspection Report", link: "https://zentrades.pro/zenfire/forms/emergency-exit-light-inspection-report-from" },
+      { name: "Emergency Light Inspection Report", link: "https://zentrades.pro/zenfire/forms/emergency-light-inspection-report" },
+      { name: "Fire Door Inspection Form NFPA 80", link: "https://zentrades.pro/zenfire/forms/fire-door-inspection-checklist-form" },
+      { name: "Fire Extinguisher Inspection Form", link: "https://zentrades.pro/zenfire/forms/fire-extinguisher-inspection-form" },
+      { name: "Fire Hose Inspection Report", link: "https://zentrades.pro/zenfire/forms/fire-hose-inspection-report-form" },
+      { name: "Fire Pump Annual Inspection", link: "https://zentrades.pro/zenfire/forms/fire-pump-annual-inspection" },
+      { name: "Fire Pump Monthly Inspection, Testing and Maintenance", link: "https://zentrades.pro/zenfire/forms/fire-pump-monthly-inspection-nfpa-25" },
+      { name: "Fire Pump Performance Test Form", link: "https://zentrades.pro/zenfire/forms/fire-pump-performance-test-form" },
+      { name: "Fire Pump Semi annual Inspection NFPA25", link: "https://zentrades.pro/zenfire/forms/fire-pump-semi-annual-inspection-form" },
+      { name: "Fire Pump Weekly Operating Test NFPA25", link: "https://zentrades.pro/zenfire/forms/fire-pump-weekly-operating-test-report-form" },
+      { name: "Fire Sprinkler Inspection Report", link: "https://zentrades.pro/zenfire/forms/fire-sprinkler-inspection-checklist-form" },
+      { name: "Foam Water Sprinkler Inspection Form NFPA25", link: "https://zentrades.pro/zenfire/forms/foam-water-sprinkler-inspection-form" },
+      { name: "Inspection Report of Fire Escapes and Fire Escape Balconies", link: "https://zentrades.pro/zenfire/forms/fire-escapes-and-fire-escape-balcony-inspection-report" },
+      { name: "Kitchen Suppression Inspection Form NFPA96", link: "https://zentrades.pro/zenfire/forms/kitchen-hood-cleaning-report" },
+      { name: "Philadelphia Fire Alarm Inspection Form", link: "https://zentrades.pro/zenfire/forms/free-philadelphia-fire-alarm-inspection-form-fill-download" },
+      { name: "Preaction Deluge Sprinkler Form NFPA25", link: "https://zentrades.pro/zenfire/forms/preaction-deluge-sprinkler-form-nfpa-25" }
+    ];
+    
+    const templates = [
+      { name: 'Invoice Template', link: 'https://example.com/templates/invoice' },
+      { name: 'Resume Template', link: 'https://example.com/templates/resume' },
+      { name: 'Newsletter Template', link: 'https://example.com/templates/newsletter' },
+      { name: 'Report Template', link: 'https://example.com/templates/report' },
+      { name: 'Presentation Template', link: 'https://example.com/templates/presentation' },
+      { name: 'Flyer Template', link: 'https://example.com/templates/flyer' }
+    ];
+    const tools = [
+      { name: 'Flow rate calculator', link: 'https://resource.zentrades.pro/tools/flow-rate-calculator' },
+      { name: 'Pipe volume calculator', link: 'https://resource.zentrades.pro/tools/pipe-volume-calculator' },
+      { name: 'Estimate Generator', link: 'https://resource.zentrades.pro/tools/estimate-generator' },
+      { name: 'Before-After Image Generator', link: 'https://resource.zentrades.pro/tools/before-after-image' },
+      { name: 'Service Price Calculator', link: 'https://resource.zentrades.pro/tools/service-prize-calculator' },
+      { name: 'HVAC Load Calculator', link: 'https://resource.zentrades.pro/tools/hvac-load-calculator' },
+      { name: 'HVAC CFM Calculator', link: 'https://resource.zentrades.pro/tools/hvac-cfm-calculator' },
+      { name: 'HVAC Duct CFM', link: 'https://resources.zentrades.pro/tools/hvac-duct-cfm-calculator' },
+      { name: 'Margin Calculator', link: 'https://resources.zentrades.pro/tools/margin-calculator' },
+      { name: 'HVAC Labor rate calculator', link: 'https://resource.zentrades.pro/tools/hvac-labor-rate-calculator' },
+      { name: 'Refrigeration BTU Calculator', link: 'https://resource.zentrades.pro/tools/refigarator-btu-calculator' },
+      { name: 'ACH Calculator', link: 'https://resource.zentrades.pro/tools/ach-calculator' },
+      { name: 'General Parts Markup Calculator', link: 'https://resource.zentrades.pro/tools/general-parts-markup' },
+      { name: 'Sprinkler Velocity Calculator', link: 'https://resource.zentrades.pro/tools/sprinkler-velocity-calculator' },
+      { name: 'SEER Energy Savings Calculator', link: 'https://resource.zentrades.pro/tools/seer-energy' }
+    ];
+    
+    // Toggle chat window open/close
+    function toggleChatbot() {
+      const chatbotWindow = document.getElementById('chatbotWindow');
+      const notification = document.getElementById('chatbotNotification');
+      chatbotWindow.classList.toggle('open');
+      if (chatbotWindow.classList.contains('open')) {
+        notification.style.display = 'none';
       } else {
-        iconDiv.innerHTML = `
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="#ee5566" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 2a5 5 0 00-5 5v2a5 5 0 0010 0V7a5 5 0 00-5-5zm0 10c-3.33 0-10 1.67-10 5v3h20v-3c0-3.33-6.67-5-10-5z"/>
-          </svg>`;
+        notification.style.display = 'block';
       }
-      
-      const bubbleDiv = document.createElement("div");
-      bubbleDiv.classList.add("bubble");
-      bubbleDiv.textContent = text;
-      
-      if (side === "bot") {
-        messageDiv.appendChild(iconDiv);
-        messageDiv.appendChild(bubbleDiv);
-      } else {
-        messageDiv.appendChild(bubbleDiv);
-        messageDiv.appendChild(iconDiv);
-      }
-      
-      messagesContainer.appendChild(messageDiv);
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
-
-    // Display a question from the conversation tree.
-    function displayQuestion(key) {
-      const questionObj = questions[key];
-      addMessage("bot", questionObj.text);
-      
-      const messagesContainer = document.getElementById("messages");
-      const optionsContainer = document.createElement("div");
-      optionsContainer.classList.add("chatbot-options");
-      
-      questionObj.options.forEach(option => {
-        const btn = document.createElement("button");
-        btn.textContent = option.text;
-        btn.addEventListener("click", () => {
-          optionsContainer.remove();
-          addMessage("user", option.text);
-          if (key === "q1") {
-            document.getElementById("chatbot-feedback").style.display = "block";
-          }
-          if (option.next && option.next.length > 0) {
-            const nextKey = option.next[Math.floor(Math.random() * option.next.length)];
-            setTimeout(() => displayQuestion(nextKey), 500);
-          } else {
-            addMessage("bot", "Thank you for chatting!");
-          }
-        });
-        optionsContainer.appendChild(btn);
+    
+    // Toggle maximize view
+    function toggleMaximize(event) {
+      event.stopPropagation();
+      const chatbotWindow = document.getElementById('chatbotWindow');
+      chatbotWindow.classList.toggle('maximized');
+    }
+    
+    // Get elements
+    const optionContainers = document.querySelectorAll('.option-container');
+    const optionsParent = document.getElementById('chatbotOptions');
+    const searchBar = document.getElementById('searchBar');
+    const searchTab = document.getElementById('searchTab');
+    const searchResults = document.getElementById('searchResults');
+    const searchTabInput = document.getElementById('searchTabInput');
+    
+    // Render Tools list inside Tools option
+    function renderTools(query = '') {
+      const activeContainer = document.querySelector('.option-container.active[data-placeholder*="tools"]');
+      if (!activeContainer) return;
+      const toolsListContainer = activeContainer.querySelector('.tools-section .resource-list.tools-list');
+      let filtered = tools;
+      if (query.trim() !== '') {
+        filtered = tools.filter(tool => tool.name.toLowerCase().includes(query.toLowerCase()));
+      } else {
+        filtered = tools.slice(0, 5);
+      }
+      toolsListContainer.innerHTML = '';
+      filtered.forEach(tool => {
+        const div = document.createElement('div');
+        div.classList.add('resource-item');
+        div.innerHTML = `<a href="${tool.link}" target="_blank">${tool.name}</a>`;
+        toolsListContainer.appendChild(div);
       });
-      messagesContainer.appendChild(optionsContainer);
-      messagesContainer.scrollTop = messagesContainer.scrollHeight;
     }
-
-    // Conversation tree with 33 nodes.
-    const questions = {
-      q1: {
-        text: "Welcome to our support chat! How can I help you?",
-        options: [
-          { text: "I have a technical issue", next: ["q2", "q3", "q4"] },
-          { text: "I have a billing question", next: ["q5", "q6", "q7"] },
-          { text: "I have a general inquiry", next: ["q8", "q9", "q10"] }
-        ]
-      },
-      q2: {
-        text: "Can you describe your technical issue? Is it software related?",
-        options: [
-          { text: "Yes, it's software related", next: ["q11", "q12"] },
-          { text: "No, it's hardware related", next: ["q13", "q14"] }
-        ]
-      },
-      q3: {
-        text: "Have you tried restarting your device to see if that resolves the issue?",
-        options: [
-          { text: "Yes, but it didn't help", next: ["q15", "q16"] },
-          { text: "No, I haven't tried that", next: ["q17", "q18"] }
-        ]
-      },
-      q4: {
-        text: "Is the issue intermittent or constant?",
-        options: [
-          { text: "Intermittent", next: ["q19", "q20"] },
-          { text: "Constant", next: ["q21"] }
-        ]
-      },
-      q5: {
-        text: "Is your billing question about an invoice discrepancy?",
-        options: [
-          { text: "Yes", next: ["q22", "q23"] },
-          { text: "No", next: ["q24"] }
-        ]
-      },
-      q6: {
-        text: "Are you experiencing issues with payment processing?",
-        options: [
-          { text: "Yes", next: ["q25"] },
-          { text: "No", next: ["q26"] }
-        ]
-      },
-      q7: {
-        text: "Do you need assistance with a refund or chargeback?",
-        options: [
-          { text: "Refund", next: ["q27"] },
-          { text: "Chargeback", next: ["q28"] }
-        ]
-      },
-      q8: {
-        text: "What general inquiry do you have? Is it about product features?",
-        options: [
-          { text: "Yes", next: ["q29"] },
-          { text: "No", next: ["q30"] }
-        ]
-      },
-      q9: {
-        text: "Would you like to know more about our company history?",
-        options: [
-          { text: "Yes", next: ["q31"] },
-          { text: "No", next: ["q32"] }
-        ]
-      },
-      q10: {
-        text: "Do you have feedback about our service?",
-        options: [
-          { text: "Yes, I'd like to provide feedback", next: ["q33"] },
-          { text: "No, thank you", next: [] }
-        ]
-      },
-      q11: {
-        text: "Have you updated to the latest version of our software?",
-        options: [
-          { text: "Yes", next: ["q12"] },
-          { text: "No", next: ["q13"] }
-        ]
-      },
-      q12: {
-        text: "Please try reinstalling the software. Did that help?",
-        options: [
-          { text: "Yes, it helped", next: [] },
-          { text: "No, still having issues", next: ["q15"] }
-        ]
-      },
-      q13: {
-        text: "For hardware issues, have you checked all connections?",
-        options: [
-          { text: "Yes, all connections are secure", next: ["q16"] },
-          { text: "No, I'll check them now", next: [] }
-        ]
-      },
-      q14: {
-        text: "Have you considered professional repair service?",
-        options: [
-          { text: "Yes", next: [] },
-          { text: "No", next: [] }
-        ]
-      },
-      q15: {
-        text: "Would you like to speak with a technical support specialist?",
-        options: [
-          { text: "Yes, please connect me", next: [] },
-          { text: "No, I'll try more troubleshooting", next: [] }
-        ]
-      },
-      q16: {
-        text: "I recommend restarting your device again. Has that worked?",
-        options: [
-          { text: "Yes", next: [] },
-          { text: "No", next: ["q17"] }
-        ]
-      },
-      q17: {
-        text: "Have you tried clearing your browser cache?",
-        options: [
-          { text: "Yes", next: ["q18"] },
-          { text: "No", next: [] }
-        ]
-      },
-      q18: {
-        text: "Try clearing your cache and cookies, then reload the page. Did that solve the problem?",
-        options: [
-          { text: "Yes", next: [] },
-          { text: "No", next: [] }
-        ]
-      },
-      q19: {
-        text: "For intermittent issues, is the problem occurring at specific times?",
-        options: [
-          { text: "Yes", next: ["q20"] },
-          { text: "No", next: ["q21"] }
-        ]
-      },
-      q20: {
-        text: "Please monitor the timings and report back if the issue persists.",
-        options: [
-          { text: "Will do", next: [] }
-        ]
-      },
-      q21: {
-        text: "It seems the problem is constant; I recommend reaching out to support.",
-        options: [
-          { text: "Connect me to support", next: [] }
-        ]
-      },
-      q22: {
-        text: "For invoice discrepancies, did you receive an incorrect amount?",
-        options: [
-          { text: "Yes", next: ["q23"] },
-          { text: "No", next: [] }
-        ]
-      },
-      q23: {
-        text: "Please verify your invoice details and contact billing support if the error persists.",
-        options: [
-          { text: "Understood", next: [] }
-        ]
-      },
-      q24: {
-        text: "Is your question about subscription plans?",
-        options: [
-          { text: "Yes", next: ["q25"] },
-          { text: "No", next: [] }
-        ]
-      },
-      q25: {
-        text: "Our payment gateway is currently under maintenance. Please try again later.",
-        options: [
-          { text: "Okay", next: [] }
-        ]
-      },
-      q26: {
-        text: "For billing inquiries, please visit our FAQ page for more details.",
-        options: [
-          { text: "Visit FAQ", next: [] }
-        ]
-      },
-      q27: {
-        text: "To process a refund, please fill out our refund form.",
-        options: [
-          { text: "Proceed to form", next: [] }
-        ]
-      },
-      q28: {
-        text: "For chargebacks, please contact our financial department directly.",
-        options: [
-          { text: "Contact now", next: [] }
-        ]
-      },
-      q29: {
-        text: "Our product features include X, Y, and Z. Would you like more details?",
-        options: [
-          { text: "Yes, more details", next: ["q30"] },
-          { text: "No, that's enough", next: [] }
-        ]
-      },
-      q30: {
-        text: "For more detailed product info, please check our product page.",
-        options: [
-          { text: "Go to product page", next: [] }
-        ]
-      },
-      q31: {
-        text: "Our company was founded in 2000 with a mission to innovate.",
-        options: [
-          { text: "Tell me more", next: ["q32"] },
-          { text: "That's enough", next: [] }
-        ]
-      },
-      q32: {
-        text: "For more company history, visit our About Us page.",
-        options: [
-          { text: "Visit About Us", next: [] }
-        ]
-      },
-      q33: {
-        text: "Please provide your feedback in the form below.",
-        options: [
-          { text: "Submit Feedback", next: [] }
-        ]
+    
+    // Render Forms list inside Forms option
+    function renderForms(query = '') {
+      const activeContainer = document.querySelector('.option-container.active[data-placeholder*="forms"]');
+      if (!activeContainer) return;
+      const formsListContainer = activeContainer.querySelector('.forms-section .resource-list.forms-list');
+      let filtered = forms;
+      if (query.trim() !== '') {
+        filtered = forms.filter(item => item.name.toLowerCase().includes(query.toLowerCase()));
+      } else {
+        filtered = forms.slice(0, 5);
       }
-    };
-
-    // On page load, load existing chat history and always start with Q1.
-    document.addEventListener("DOMContentLoaded", () => {
-      loadChatHistory();
-      
-      const chatWindow = document.getElementById("chatbot-window");
-      const chatIcon = document.getElementById("chatbot-icon");
-      const chatClose = document.getElementById("chatbot-close");
-      const initialPopup = document.getElementById("initial-popup");
-      const chatBadge = document.getElementById("chat-badge");
-      
-      // When user clicks the chat icon, always start with Q1.
-      chatIcon.addEventListener("click", () => {
-        if (!chatWindow.classList.contains("open")) {
-          chatWindow.classList.add("open");
-          if (initialPopup) { initialPopup.style.display = "none"; }
-          if (chatBadge) { chatBadge.style.display = "none"; }
-          // Always ask Q1 anew regardless of previous history.
-          displayQuestion("q1");
+      formsListContainer.innerHTML = '';
+      filtered.forEach(item => {
+        const div = document.createElement('div');
+        div.classList.add('resource-item');
+        div.innerHTML = `<a href="${item.link}" target="_blank">${item.name}</a>`;
+        formsListContainer.appendChild(div);
+      });
+    }
+    
+    // Render Templates list inside Templates option
+    function renderTemplates(query = '') {
+      const activeContainer = document.querySelector('.option-container.active[data-placeholder*="templates"]');
+      if (!activeContainer) return;
+      const templatesListContainer = activeContainer.querySelector('.templates-section .resource-list.templates-list');
+      let filtered = templates;
+      if (query.trim() !== '') {
+        filtered = templates.filter(item => item.name.toLowerCase().includes(query.toLowerCase()));
+      } else {
+        filtered = templates.slice(0, 5);
+      }
+      templatesListContainer.innerHTML = '';
+      filtered.forEach(item => {
+        const div = document.createElement('div');
+        div.classList.add('resource-item');
+        div.innerHTML = `<a href="${item.link}" target="_blank">${item.name}</a>`;
+        templatesListContainer.appendChild(div);
+      });
+    }
+    
+    // Render aggregated resources (top 5 of forms, templates, tools) for search tab
+    function renderAggregatedResources() {
+      let html = '';
+      html += `<div class="search-results-section"><h4>Forms</h4>`;
+      forms.slice(0, 5).forEach(item => {
+        html += `<div class="search-item"><a href="${item.link}" target="_blank">${item.name}</a></div>`;
+      });
+      html += `</div>`;
+      html += `<div class="search-results-section"><h4>Templates</h4>`;
+      templates.slice(0, 5).forEach(item => {
+        html += `<div class="search-item"><a href="${item.link}" target="_blank">${item.name}</a></div>`;
+      });
+      html += `</div>`;
+      html += `<div class="search-results-section"><h4>Tools</h4>`;
+      tools.slice(0, 5).forEach(item => {
+        html += `<div class="search-item"><a href="${item.link}" target="_blank">${item.name}</a></div>`;
+      });
+      html += `</div>`;
+      searchResults.innerHTML = html;
+    }
+    
+    // Render resources for a specific category in search tab
+    function renderCategoryResources(category) {
+      let html = '';
+      let data = [];
+      if (category === 'forms') {
+        data = forms;
+      } else if (category === 'templates') {
+        data = templates;
+      } else if (category === 'tools') {
+        data = tools;
+      }
+      html += `<div class="search-results-section"><h4>${category.charAt(0).toUpperCase() + category.slice(1)}</h4>`;
+      data.slice(0, 5).forEach(item => {
+        html += `<div class="search-item"><a href="${item.link}" target="_blank">${item.name}</a></div>`;
+      });
+      html += `</div>`;
+      searchResults.innerHTML = html;
+    }
+    
+    // Filter and render search results based on query and category in search tab
+    function filterAndRenderResults(category, query) {
+      let html = '';
+      if (category && (category === 'forms' || category === 'templates' || category === 'tools')) {
+        let data = [];
+        if (category === 'forms') data = forms;
+        else if (category === 'templates') data = templates;
+        else if (category === 'tools') data = tools;
+        const filtered = data.filter(item => item.name.toLowerCase().includes(query.toLowerCase()));
+        html += `<div class="search-results-section"><h4>${category.charAt(0).toUpperCase() + category.slice(1)}</h4>`;
+        if (filtered.length === 0) {
+          html += `<div class="search-item">No results found.</div>`;
         } else {
-          chatWindow.classList.remove("open");
+          filtered.forEach(item => {
+            html += `<div class="search-item"><a href="${item.link}" target="_blank">${item.name}</a></div>`;
+          });
+        }
+        html += `</div>`;
+      } else {
+        let aggregated = [];
+        const allData = [
+          ...forms.map(item => ({...item, category: 'Forms'})),
+          ...templates.map(item => ({...item, category: 'Templates'})),
+          ...tools.map(item => ({...item, category: 'Tools'}))
+        ];
+        aggregated = allData.filter(item => item.name.toLowerCase().includes(query.toLowerCase()));
+        if (aggregated.length === 0) {
+          html += `<div class="search-item">No results found.</div>`;
+        } else {
+          const groups = {};
+          aggregated.forEach(item => {
+            if (!groups[item.category]) groups[item.category] = [];
+            groups[item.category].push(item);
+          });
+          for (let group in groups) {
+            html += `<div class="search-results-section"><h4>${group}</h4>`;
+            groups[group].forEach(item => {
+              html += `<div class="search-item"><a href="${item.link}" target="_blank">${item.name}</a></div>`;
+            });
+            html += `</div>`;
+          }
+        }
+      }
+      searchResults.innerHTML = html;
+    }
+    
+    // Open search tab: hide main options and global search, show search tab with its own search bar
+    function openSearchTab() {
+      searchTab.classList.add('open');
+      document.getElementById('chatbotOptions').style.display = 'none';
+      document.getElementById('globalSearchContainer').style.display = 'none';
+      if (activeCategory) {
+        renderCategoryResources(activeCategory);
+        searchTabInput.setAttribute('placeholder', `Search in ${activeCategory}...`);
+      } else {
+        renderAggregatedResources();
+        searchTabInput.setAttribute('placeholder', 'Search...');
+      }
+    }
+    
+    // Close search tab: go back to main options and global search bar
+    function closeSearchTab() {
+      searchTab.classList.remove('open');
+      document.getElementById('chatbotOptions').style.display = 'flex';
+      document.getElementById('globalSearchContainer').style.display = 'block';
+      searchTabInput.value = '';
+      if (activeCategory) {
+        renderCategoryResources(activeCategory);
+      } else {
+        renderAggregatedResources();
+      }
+    }
+    
+    // Event listener for global search bar click to open search tab
+    searchBar.addEventListener('click', () => {
+      openSearchTab();
+    });
+    
+    // Event listener for search input in search tab
+    searchTabInput.addEventListener('input', () => {
+      const query = searchTabInput.value.trim();
+      if (activeCategory) {
+        filterAndRenderResults(activeCategory, query);
+      } else {
+        filterAndRenderResults(null, query);
+      }
+    });
+    
+    // Add event listeners to main option containers
+    optionContainers.forEach(container => {
+      const mainButton = container.querySelector('.main-option');
+      const subOptions = container.querySelector('.sub-options');
+      const arrow = mainButton.querySelector('.arrow');
+      
+      mainButton.addEventListener('click', () => {
+        optionsParent.prepend(container);
+        container.classList.add('active');
+        optionContainers.forEach(otherContainer => {
+          if (otherContainer !== container) {
+            otherContainer.classList.add('hidden');
+          }
+        });
+        const placeholder = container.getAttribute('data-placeholder');
+        searchBar.setAttribute('placeholder', placeholder);
+        if (placeholder.toLowerCase().includes('forms')) {
+          activeCategory = 'forms';
+        } else if (placeholder.toLowerCase().includes('templates')) {
+          activeCategory = 'templates';
+        } else if (placeholder.toLowerCase().includes('tools')) {
+          activeCategory = 'tools';
+        } else {
+          activeCategory = null;
+        }
+        subOptions.classList.add('open');
+        arrow.classList.add('rotated');
+        if (activeCategory === 'tools') {
+          const toolsSection = container.querySelector('.tools-section');
+          toolsSection.classList.add('open');
+          renderTools();
+        } else if (activeCategory === 'forms') {
+          const formsSection = container.querySelector('.forms-section');
+          formsSection.classList.add('open');
+          renderForms();
+        } else if (activeCategory === 'templates') {
+          const templatesSection = container.querySelector('.templates-section');
+          templatesSection.classList.add('open');
+          renderTemplates();
         }
       });
       
-      chatClose.addEventListener("click", () => {
-        chatWindow.classList.remove("open");
+      const backButton = container.querySelector('.back-button');
+      if (backButton) {
+        backButton.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const subOptions = container.querySelector('.sub-options');
+          subOptions.classList.remove('open');
+          const arrow = container.querySelector('.arrow');
+          arrow.classList.remove('rotated');
+          container.classList.remove('active');
+          const toolsSection = container.querySelector('.tools-section');
+          if (toolsSection) { toolsSection.classList.remove('open'); }
+          const formsSection = container.querySelector('.forms-section');
+          if (formsSection) { formsSection.classList.remove('open'); }
+          const templatesSection = container.querySelector('.templates-section');
+          if (templatesSection) { templatesSection.classList.remove('open'); }
+          optionContainers.forEach(otherContainer => {
+            otherContainer.classList.remove('hidden');
+          });
+          searchBar.setAttribute('placeholder', 'Search...');
+          activeCategory = null;
+        });
+      }
+      
+      // For each sub-option, if the text contains "look for", add an event listener to open the search tab.
+      container.querySelectorAll('.sub-option').forEach(subOption => {
+        if (subOption.textContent.trim().toLowerCase().includes("look for")) {
+          subOption.addEventListener('click', function(e) {
+            e.stopPropagation();
+            // Ensure activeCategory is set based on container's data-placeholder if not already set.
+            const placeholder = container.getAttribute('data-placeholder');
+            if (placeholder.toLowerCase().includes('forms')) {
+              activeCategory = 'forms';
+            } else if (placeholder.toLowerCase().includes('templates')) {
+              activeCategory = 'templates';
+            } else if (placeholder.toLowerCase().includes('tools')) {
+              activeCategory = 'tools';
+            }
+            openSearchTab();
+          });
+        }
       });
       
-      document.getElementById("feedback-yes").addEventListener("click", () => {
-        alert("Thank you for your positive feedback!");
-      });
-      document.getElementById("feedback-no").addEventListener("click", () => {
-        alert("We're sorry to hear that. We'll strive to improve.");
-      });
+      // For Tools option: add event listener to "Watch Video" sub-option to show video container
+      if (container.getAttribute('data-placeholder').toLowerCase().includes('tools')) {
+        const watchVideoButton = container.querySelectorAll('.sub-option')[0];
+        if (watchVideoButton && watchVideoButton.textContent.trim() === 'Watch Video') {
+          watchVideoButton.addEventListener('click', (e) => {
+            e.stopPropagation();
+            subOptions.classList.remove('open');
+            const videoContainer = container.querySelector('.video-container');
+            videoContainer.classList.add('open');
+          });
+        }
+      }
     });
+    
+    // Close video container when user clicks the close button
+    function closeVideo(e) {
+      e.stopPropagation();
+      const videoContainer = e.target.closest('.video-container');
+      if (videoContainer) {
+        videoContainer.classList.remove('open');
+      }
+    }
   </script>
 </body>
 </html>
